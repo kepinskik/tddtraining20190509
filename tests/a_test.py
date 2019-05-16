@@ -1,46 +1,74 @@
 
+import pytest
+
 #test code
 def test_empty_inputs_list_returns_empty_results_list():
-  system = ComplexityMeter()
+  measure = WithLines()
+  system = ComplexityMeter(measure)
   input = []
   result = system.measure(input)
   assert result == []
 
 def test_single_input_returns_single_measure():
-  system = ComplexityMeter()
+  measure = WithLines()
+  system = ComplexityMeter(measure)
   input = [""]
   result = system.measure(input)
   assert len(result) == 1
 
-def test_empty_file_has_zero_measure():
-  system = ComplexityMeter()
-  input = [""]
-  result = system.measure(input)
-  assert result == [0]
 
-def test_single_line_file_has_measure_1():
-  system = ComplexityMeter()
-  input = ["one_liner"]
-  result = system.measure(input)
-  assert result == [1]
+@pytest.mark.parametrize(
+  "file,                              expected_value",[
+  ("",                                0),
+  ("  ",                              1),
+  ("one_liner",                       1),
+  ("one_line\nline 2\nline 3",        3),
+  ("one_line\nline 2\n",              2),
+  ("\n\n\n\n\n\n",                    0)
+])
+def test_code_lines_complexity(file, expected_value):
+  measure = WithLines()
+  system = ComplexityMeter(measure)
+  assert system.measure([file]) == [expected_value]
 
-def test_3_line_file_has_measure_3():
-  system = ComplexityMeter()
-  input = ["""one_line
-  line 2
-  line 3"""]
-  result = system.measure(input)
-  assert result == [3]
-
+@pytest.mark.parametrize(
+  "file,                              expected_value",[
+  ("",                                0),
+  ("  ",                              0),
+  ("one_line\nline 2\nline 3",        0),
+  ("\n\n\n\n\n\n",                    0),
+  ("\tline",                          1),
+  ("\t\tline",                        2)
+])
+def test_code_indents_complexity(file, expected_value):
+  measure = WithIndents()
+  system = ComplexityMeter(measure)
+  assert system.measure([file]) == [expected_value]
 
 #production code
-class ComplexityMeter:
+
+class WithIndents:
   def __init__(self):
     pass
+
+  def get(self, file):
+    return file.count("\t")
+
+
+class WithLines:
+  def __init__(self):
+    pass
+  
+  def get(self, file):
+    return len(list(filter(lambda line: line != "", file.split('\n'))))
+
+
+class ComplexityMeter:
+  def __init__(self, measure):
+    self._measure = measure
 
   def measure(self, input):
     return [self.measure_single(x) for x in input]
 
   def measure_single(self, file):
-    if(len(file) == 0): return 0
-    return len(file.split('\n'))
+    return self._measure.get(file)
